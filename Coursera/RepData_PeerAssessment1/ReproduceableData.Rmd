@@ -1,0 +1,193 @@
+---
+title: "Reproducible Data Project 1"
+author: "Chris Gbekorbu"
+date: "Friday, July 10, 2015"
+output: html_document
+---
+
+### Loading and Preprocessing the Data
+1. Read in the data and view the first few lines.
+
+```{r}
+data <- read.csv("C:/Users/gbekorbu/Downloads/Documents/Research/DataFiles/repdata/activity.csv")
+
+```
+
+2. Load necessary packages.
+```{r}
+library(lubridate)
+library(lattice)
+```
+
+### Mean Total Number of Steps Taken per Day
+1. Determine the number of steps taken per day.
+
+```{r}
+daily_sum <- aggregate(data$steps, by = list(data$date), FUN = sum)
+names(daily_sum) <- c("date", "steps")
+```
+
+2. Create a histogram displaying the number of steps taken per day.
+```{r}
+hist(daily_sum$steps, xlab="Number of Steps", ylab="Number of Days", main="Total Number of Steps per Day")
+```
+
+3. Calculate and report the mean and median of the total number of steps taken per day.
+
+The mean number of steps taken on each day is given by:
+
+```{r}
+daily_mean <- aggregate(data$steps, by = list(data$date), FUN = mean)
+names(daily_mean) <- c("date", "steps")
+```
+
+And the results are:
+
+```{r}
+    daily_mean
+```
+
+In addition, over the period that data were collected, the mean number of steps taken (excluding missing values) is:
+
+```{r}
+mean(data$steps, na.rm = TRUE)
+```
+
+The median number of steps taken on each day is given by:
+
+```{r}
+daily_median <- aggregate(data$steps, by = list(data$date), FUN = median)
+names(daily_median) <- c("date", "steps")
+```
+
+And the results are:
+
+```{r}
+daily_median
+```
+
+In addition, over the period that data were collected, the mean number of steps taken (excluding missing values) is:
+
+```{r}
+median(data$steps, na.rm = TRUE)
+```
+
+### Average Daily Activity Pattern
+
+1. Make a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+
+```{r}
+ts <- tapply(data$steps, data$interval, mean, na.rm = TRUE)
+
+plot(row.names(ts), ts, type = "l", xlab = "Time of Day (24hr Format)", ylab = "Average Steps", main = "Average Number of Steps Taken")
+```
+
+2. Determine which 5-minute interval (on average across all the days) contains the maximum number of steps.
+
+```{r}
+max_time <- which.max(ts)
+names(max_time)
+```
+
+Thus, we see that **0835** is when the most steps tends to be taken.
+
+### Impute Missing Values
+Note that there are a number of days/intervals where there are missing values (coded as NA). The presence of missing days may introduce bias into some calculations or summaries of the data.
+
+1. First, find the total number of missing values in the dataset.
+
+```{r}
+missing <- sum(is.na(data$steps))
+
+missing
+```
+
+Thus, we see that there are **2304** missing values.
+
+2. Devise a strategy for filling in all of the missing values in the dataset.
+
+Although it is not the most robust strategy, I will use the total mean over the period that data were collected since the strategy did not need to be complex.
+
+3. Create a new dataset that is equal to the original dataset but with the missing data filled in.
+
+```{r}
+new_data <- data
+new_data[is.na(new_data$steps) == TRUE, 1] <- mean(new_data$steps, na.rm = TRUE)
+```
+
+4. Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+
+Determine the number of steps taken per day in the new data set. 
+
+```{r}
+new_daily_sum <- aggregate(new_data$steps, by = list(new_data$date), FUN = sum)
+names(new_daily_sum) <- c("date", "steps")
+```
+
+Create histograms of both data sets to displaying the difference.
+
+```{r}
+par(mfrow = c(1,2))
+hist(daily_sum$steps, xlab="Number of Steps", ylab="Number of Days", main="Total Number of Steps per Day (Old Data)")
+hist(new_daily_sum$steps, xlab="Number of Steps", ylab="Number of Days", main="Total Number of Steps per Day (New Data)")
+
+```
+**NOTE** that with the new data set, the number of days axis has increased.
+
+The mean for the old data set was:
+
+```{r}
+mean(data$steps, na.rm = TRUE)
+```
+
+The mean for the new data set is:
+
+```{r}
+mean(new_data$steps, na.rm = TRUE)
+```
+
+The median for the old data set was:
+
+```{r}
+median(data$steps, na.rm = TRUE)
+```
+
+The median for the new data is:
+
+```{r}
+median(data$steps, na.rm = TRUE)
+```
+
+Thus we see that by imputing data with the total mean number of steps taken over the sample period, the mean and the median have not changed, however, the total number of days in which data are observed changes. As a result, we see that it is important to consider how we impute our data.
+
+### Weekdays and Weekend Differences
+Use the dataset with the filled-in missing values for this part.
+
+1. Create a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+```{r}
+day <- weekdays(as.POSIXlt(new_data$date))
+day_level <- vector()
+for (i in 1:nrow(new_data))
+    {
+        if (day[i] == "Saturday" | day[i] == "Sunday")
+        {
+            day_level[i] <- "Weekend"
+        }
+        else
+        {
+            day_level[i] <- "Weekday"
+        }
+}
+new_data$day_level <- day_level
+new_data$day_level <- factor(new_data$day_level)
+```
+
+2.	Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis).
+
+```{r}
+new_steps <- aggregate(new_data$steps, by = list(new_data$interval, new_data$day_level), FUN = mean)
+names(new_steps) <- c("interval", "day_level", "steps")
+xyplot(steps ~ interval | day_level, new_steps, type = "l", layout = c(1,2), xlab = "Time (5 Minute Intervals for 24 Hours", ylab = "Average Number of Steps")
+```
+
+Based on these graphs (with imputed data), there appears to be a difference in the activity pattern during the week and on weekends.
